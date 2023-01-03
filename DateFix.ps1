@@ -9,6 +9,8 @@
     The root folder to be processed, e.g. C:\Users\Username\Pictures\
 .PARAMETER Recurse
     Enables recursing through sub-directories of the root folder.
+.PARAMETER Rename
+    Rename the file using the yyyyMMdd_HHmmss.ext format.
 .PARAMETER DateModifiedFallback
     Falls back to the files Date Modified value if EXIF and pattern matching fails.
 .PARAMETER DryRun
@@ -40,7 +42,7 @@
 .LINK 
     https://www.joepitt.co.uk/Project/DateFix/
 #>
-param ([string]$Path, [switch]$Recurse, [switch]$DateModifiedFallback, [switch]$DryRun, [switch]$Verbose)
+param ([string]$Path, [switch]$Recurse, [switch]$DateModifiedFallback, [switch]$DryRun, [switch]$Verbose, [switch]$Rename)
 
 
 $oldverbose = $VerbosePreference
@@ -448,16 +450,21 @@ foreach ($file in $files) {
 	}
 
 	if ($NewName -ne "FAIL") {
-		$Test = $NewName + $Extension
-		if ($file.Name -ne $Test) {
-			if (Test-Path $Test) {
+		if ($Rename) {
+			$FileName = $NewName + $Extension
+		}
+		else {
+			$FileName = $file.Name
+		}
+		if ($file.Name -ne $FileName) {
+			if (Test-Path $FileName) {
 				$i = 1
-				$Test = $NewName + "-" + $i + $Extension
-				if ($file.Name -ne $Test) {
-					while (Test-Path $Test) {
+				$FileName = $NewName + "-" + $i + $Extension
+				if ($file.Name -ne $FileName) {
+					while (Test-Path $FileName) {
 						$i++
-						$Test = $NewName + "-" + $i + $Extension
-						if ($file.Name -eq $Test) {
+						$FileName = $NewName + "-" + $i + $Extension
+						if ($file.Name -eq $FileName) {
 							break
 						}
 					}
@@ -465,7 +472,7 @@ foreach ($file in $files) {
 				$NewName = $NewName + "-" + $i
 			}
 
-			if ($file.Name -ne $Test) {
+			if ($file.Name -ne $FileName) {
 				if ($DryRun) {
 					Write-Warning "  [Dry Run] Would rename $($file.FullName) to $NewName$Extension"
 				}
@@ -477,11 +484,11 @@ foreach ($file in $files) {
 		}
 		$TimeStampStr = $NewName.Substring(0, 4) + "-" + $NewName.Substring(4, 2) + "-" + $NewName.Substring(6, 2) + " " + $NewName.Substring(9, 2) + ":" + $NewName.Substring(11, 2) + ":" + $NewName.Substring(13, 2)
 		if ($DryRun) {
-			Write-Verbose "  [Dry Run] Would set timestamps on $NewName$Extension to $TimeStampStr"
+			Write-Verbose "  [Dry Run] Would set timestamps on $FileName to $TimeStampStr"
 		}
 		else {
 			$TimeStamp = [datetime]$TimeStampStr
-			Set-FileTimeStamps "$NewName$Extension" $TimeStamp
+			Set-FileTimeStamps "$FileName" $TimeStamp
 		}
 	}
 }
